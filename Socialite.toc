@@ -1,0 +1,6 @@
+## Interface: 70300
+## Version: v0.01-Alpha
+## Title: Socialite
+## Notes: Keep track of people you do content with
+## Author: TylerR909
+## SavedVariables: SCLDB
