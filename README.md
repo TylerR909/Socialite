@@ -57,3 +57,34 @@ Example: Notify when a group caps who you've seen before. If someone drops and n
 * Members []
     * GUID
     * 
+
+## Logic
+### RegisterTallyEvents
+Registers all the events on which SCL should tally an event. Could look something like:
+```
+local events = [
+    {
+        nativeEvent: "BOSS_KILL",
+        pool: "BOSSES",
+        handler: tallyBoss  -- Function
+    },
+    {
+        nativeEvent: "CHALLENGE_MODE_COMPLETE",
+        pool: "DUNGEONS",
+        handler: tallyDungeon  -- Callback
+    },
+    {
+        nativeEvent: "LFG_COMPLETION_AWARD",
+        pool: "DUNGEONS",
+        handler: tallyDungeon  -- Callback
+    },
+    {
+        nativeEvent: "BATTLEGROUND_COMPLETED",
+        pool: "BATTLEGROUNDS",
+        handler: tallyBattleground  -- Callback
+    }
+]
+```
+
+Might not need "Pool" if a custom function is made for each type of event. Or the registrar taking in this array can pass pool as an argument to each callback to make it more dynamic.
+
