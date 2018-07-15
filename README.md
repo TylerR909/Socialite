@@ -11,7 +11,6 @@ This file tracks some early planning for cobbling together this addon.
 * BOSS_KILL
 * CHALLENGE_MODE_COMPLETE
 * LFG_COMPLETION_REWARD - Fire when a random dungeon finishes and the player is awarded the completion reward. Could use as a "dungeons completed" with each player, event. Not sure if it'd run in manual groups though.
-* C_Timer.After - setTimeout()
 
 ### Key API Functions
 * UnitGUID - Store players by GUID
@@ -23,6 +22,7 @@ This file tracks some early planning for cobbling together this addon.
 * GetCurrentMapAreaId - Gets an ID from the current map area which can be converted back in to a localized name with other functions
 * GetMapNameByID - ID to Map Name
 * BNGetFriendInfo - Gets BNet ID by friendIndex
+* C_Timer.After - setTimeout()
 
 ### API Types
 * UnitId "partyN"/"raidN" - Functions that take a "unit" can use party1, party2, etc to specify which party member. Should make looping through party members a breeze.
