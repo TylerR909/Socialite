@@ -1,6 +1,6 @@
 local AddonName, Addon = ...
 
-SCL = LibStub("AceAddon-3.0"):NewAddon(AddonName,"AceEvent-3.0","AceConsole-3.0")
+SCL = LibStub("AceAddon-3.0"):NewAddon(AddonName,"AceEvent-3.0","AceConsole-3.0","AceHook-3.0")
 local AceGUI = LibStub("AceGUI-3.0")
 -- local L = LibStub("AceLocale-3.0"):GetLocale(AddonName, true)
 
@@ -16,7 +16,7 @@ function SCL:EchoEvent(event, ...)
     for i=1, select('#', ...) do
         msg = msg.." "..tostring(select(i, ...))
     end
-    SCL:Debug(msg)
+    self:Debug(msg)
 end
 
 function SCL:TallyBossKill()
@@ -60,6 +60,14 @@ function SCL:VerifyCharacterByGUID(characterGUID)
     end
 
     return self.db.global[characterGUID]
+end
+
+function SCL:AddToTooltip(event, ...)
+    self:Debug(event)
+    local mouseoverGUID = UnitGUID('mouseover')
+    if self.db.global[mouseoverGUID] == nil then return end
+    local character = self.db.global[mouseoverGUID]
+    GameTooltip:AddLine("|cFFFF0000SCL|r | Kills "..character.stats.bossKills)
 end
 
 --@debug@
@@ -106,22 +114,25 @@ end
 local eventMap = {
     {
         event = "BOSS_KILL",
-        handler = SCL.TallyBossKill
+        handler = "TallyBossKill"
     }, {
         event = "CHALLENGE_MODE_COMPLETE",
-        handler = SCL.EchoEvent
+        handler = "EchoEvent"
     }, {
         event = "LFG_COMPLETION_AWARD",
-        handler = SCL.EchoEvent
+        handler = "EchoEvent"
     }, {
         event = "GROUP_JOINED",
-        handler = SCL.EchoEvent
+        handler = "EchoEvent"
     }, {
         event = "GROUP_LEFT",
-        handler = SCL.EchoEvent
+        handler = "EchoEvent"
     }, {
         event = "GROUP_ROSTER_UPDATE",
-        handler = SCL.EchoEvent
+        handler = "EchoEvent"
+    }, {
+        event = "UPDATE_MOUSEOVER_UNIT",
+        handler = "AddToTooltip"
     }
 }
 
@@ -131,7 +142,8 @@ function SCL:OnInitialize()
     self.eventMap = eventMap
     for i,v in ipairs(eventMap) do
         self:Debug('Registering event: '..v.event)
-        self:RegisterEvent(v.event, function (...) v.handler(v.event, ...) end)
-        -- self:RegisterEvent(v.event, v.handler)
+        -- self:RegisterEvent(v.event, function (...) v.handler(v.event, ...) end)
+        self:RegisterEvent(v.event, v.handler)
     end
+    -- self:SecureHook(GameTooltip, "SetUnit", "AddToTooltip")
 end
