@@ -4,3 +4,6 @@
 ## Notes: Keep track of people you do content with
 ## Author: TylerR909
 ## SavedVariables: SCLDB
+
+embeds.xml
+Socialite.lua

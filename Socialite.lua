@@ -1,7 +1,8 @@
 local AddonName, Addon = ...
 
 SCL = LibStub("AceAddon-3.0"):NewAddon(AddonName,"AceEvent-3.0","AceConsole-3.0")
-local L = LibStub("AceLocale-3.0"):GetLocale(AddonName, true)
+local AceGUI = LibStub("AceGUI-3.0")
+-- local L = LibStub("AceLocale-3.0"):GetLocale(AddonName, true)
 
 local events = {
         "BOSS_KILL",
@@ -13,9 +14,10 @@ local events = {
     };
 
 function SCL:OnInitialize()
-    self:Debug('SCL Loaded')
+    self:Debug("SCL Initializing")
     for i,v in ipairs(events) do
-        self:RegisterEvent(v, SCL.EchoEvent)
+        self:Debug('Registering event: '..v)
+        self:RegisterEvent(v, function (...) self:EchoEvent(v, ...) end)
     end
 end
 
@@ -26,12 +28,52 @@ function SCL:Debug(msg)
 end
 
 function SCL:EchoEvent(event, ...)
-    local args = ...
-    local msg = "EVENT: "..event
-    if args then msg = msg.." with args: "..args end
+    local msg = "EVENT: "..tostring(event)
+    if ... then msg = msg.." with ARGS: " end
+    for i=1, select('#', ...) do
+        msg = msg.." "..tostring(select(i, ...))
+    end
     SCL:Debug(msg)
 end
 
 --@debug@
     SCL.debugEnabled = true;
+
+    function SCL:Dump()
+        local f = AceGUI:Create("Frame")
+        f:SetCallback("OnClose", function(widget) AceGUI:Release(widget) end)
+        f:SetTitle("SCL Data Dump")
+        local editbox = AceGUI:Create("MultiLineEditBox")
+        f:AddChild(editbox)
+        editbox:SetText(table_to_string(events))
+        editbox:SetFullWidth(true)
+        editbox:SetFullHeight(true)
+        editbox:SetNumLines(25)
+    end
+
+    function table_to_string(tbl)
+        local result = "{\n"
+        for k, v in pairs(tbl) do
+            -- Check the key type (ignore any numerical keys - assume its an array)
+            if type(k) == "string" then
+                result = result.."[\""..k.."\"]".."="
+            end
+
+            -- Check the value type
+            if type(v) == "table" then
+                result = result..table_to_string(v)
+            elseif type(v) == "boolean" then
+                result = result..tostring(v)
+            else
+                result = result.."\""..v.."\""
+            end
+            result = result..",\n"
+        end
+        -- Remove leading commas from the result
+        if result ~= "" then
+            result = result:sub(1, result:len()-1)
+        end
+        return result.."\n}\n"
+    end
+
 --@end-debug@
