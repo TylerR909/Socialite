@@ -1,6 +1,8 @@
 # Socialite
 This addon tracks the number of times you've grouped up with people.
 
+Distributed on [Curse](https://wow.curseforge.com/projects/socialite)
+
 This file tracks some early planning for cobbling together this addon.
 
 ## API Knowledge Base

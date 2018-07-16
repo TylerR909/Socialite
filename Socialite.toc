@@ -1,5 +1,5 @@
 ## Interface: 70300
-## Version: v0.01-Alpha
+## Version: @project-version@
 ## Title: Socialite
 ## Notes: Keep track of people you do content with
 ## Author: TylerR909
