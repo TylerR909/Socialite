@@ -6,4 +6,6 @@
 ## SavedVariables: SocialiteDB
 
 embeds.xml
+Locale\Locales.xml
+
 Socialite.lua

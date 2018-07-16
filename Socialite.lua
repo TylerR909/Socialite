@@ -2,7 +2,7 @@ local AddonName, Addon = ...
 
 SCL = LibStub("AceAddon-3.0"):NewAddon(AddonName,"AceEvent-3.0","AceConsole-3.0","AceHook-3.0")
 local AceGUI = LibStub("AceGUI-3.0")
--- local L = LibStub("AceLocale-3.0"):GetLocale(AddonName, true)
+local L = LibStub("AceLocale-3.0"):GetLocale(AddonName, true)
 
 function SCL:Debug(msg)
     if self.debugEnabled then
@@ -70,7 +70,12 @@ function SCL:AddToTooltip(event, ...)
     local mouseoverGUID = UnitGUID("mouseover")
     if self.db.global[mouseoverGUID] == nil then return end
     local character = self.db.global[mouseoverGUID]
-    GameTooltip:AddLine("|cFFFF0000SCL|r | Kills "..character.stats.bossKills)
+    -- GameTooltip:AddLine("|cFFFF0000"..L["SCL"].."|r -> "..L["Kills"].." "..character.stats.bossKills)
+    GameTooltip:AddLine(("|cFFFF0000%s|r -> %s: %d"):format(
+        L["SCL"],
+        L["Kills"],
+        character.stats.bossKills
+    ))
     GameTooltip:Show()
 end
 
