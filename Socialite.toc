@@ -3,7 +3,7 @@
 ## Title: Socialite
 ## Notes: Keep track of people you do content with
 ## Author: TylerR909
-## SavedVariables: SCLDB
+## SavedVariables: SocialiteDB
 
 embeds.xml
 Socialite.lua

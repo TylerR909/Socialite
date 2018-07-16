@@ -4,23 +4,6 @@ SCL = LibStub("AceAddon-3.0"):NewAddon(AddonName,"AceEvent-3.0","AceConsole-3.0"
 local AceGUI = LibStub("AceGUI-3.0")
 -- local L = LibStub("AceLocale-3.0"):GetLocale(AddonName, true)
 
-local events = {
-        "BOSS_KILL",
-        "CHALLENGE_MODE_COMPLETE",
-        "LFG_COMPLETION_AWARD",
-        "GROUP_JOINED",
-        "GROUP_LEFT",
-        "GROUP_ROSTER_UPDATE"
-    };
-
-function SCL:OnInitialize()
-    self:Debug("SCL Initializing")
-    for i,v in ipairs(events) do
-        self:Debug('Registering event: '..v)
-        self:RegisterEvent(v, function (...) self:EchoEvent(v, ...) end)
-    end
-end
-
 function SCL:Debug(msg)
     if self.debugEnabled then
         self:Print(msg)
@@ -36,6 +19,49 @@ function SCL:EchoEvent(event, ...)
     SCL:Debug(msg)
 end
 
+function SCL:TallyBossKill()
+    self:Debug("Tallying boss kill...")
+    local numGroupMembers = GetNumGroupMembers()
+    -- local groupPrefix = (function() if IsInRaid() then return "raid" else return "party" end end)()
+    local groupPrefix = (IsInRaid() and 'raid') or (IsInGroup() and 'party')
+    if not groupPrefix then self:Debug("Not in a group. Skipping tally."); return nil end
+    self:Debug("Group prefix is: "..groupPrefix)
+    for i=1,numGroupMembers do
+        local playerGUID = UnitGUID(groupPrefix..i)
+        self:Debug("Grabbed player GUID: "..playerGUID)
+        SCL:TallyBossKillCharacter(playerGUID)
+    end
+end
+
+function SCL:TallyBossKillCharacter(characterGUID)
+    local char = self:VerifyCharacterByGUID(characterGUID)
+    char.stats.bossKills = char.stats.bossKills + 1
+    char.lastSeen = GetServerTime()
+    self:Debug("Boss kills with "..char.name..": "..char.stats.bossKills)
+end
+
+function SCL:VerifyCharacterByGUID(characterGUID)
+    local _,classId,_,_,_,characterName,characterRealm = GetPlayerInfoByGUID(characterGUID)
+
+    if not self.db.global[characterGUID] then
+        self:Debug("Adding "..characterName.." to SCL db")
+        self.db.global[characterGUID] = {
+            GUID = characterGuid,
+            name = characterName,
+            realm = characterRealm,
+            classId = classId,
+            BNPresenceID = nil,
+            firstSeen = GetServerTime(),
+            lastSeen = 0,
+            stats = {
+                bossKills = 0
+            }
+        }
+    end
+
+    return self.db.global[characterGUID]
+end
+
 --@debug@
     SCL.debugEnabled = true;
 
@@ -45,7 +71,7 @@ end
         f:SetTitle("SCL Data Dump")
         local editbox = AceGUI:Create("MultiLineEditBox")
         f:AddChild(editbox)
-        editbox:SetText(table_to_string(events))
+        editbox:SetText(table_to_string(self.db.global))
         editbox:SetFullWidth(true)
         editbox:SetFullHeight(true)
         editbox:SetNumLines(25)
@@ -75,5 +101,37 @@ end
         end
         return result.."\n}\n"
     end
-
 --@end-debug@
+
+local eventMap = {
+    {
+        event = "BOSS_KILL",
+        handler = SCL.TallyBossKill
+    }, {
+        event = "CHALLENGE_MODE_COMPLETE",
+        handler = SCL.EchoEvent
+    }, {
+        event = "LFG_COMPLETION_AWARD",
+        handler = SCL.EchoEvent
+    }, {
+        event = "GROUP_JOINED",
+        handler = SCL.EchoEvent
+    }, {
+        event = "GROUP_LEFT",
+        handler = SCL.EchoEvent
+    }, {
+        event = "GROUP_ROSTER_UPDATE",
+        handler = SCL.EchoEvent
+    }
+}
+
+function SCL:OnInitialize()
+    self:Debug("SCL Initializing")
+    self.db = LibStub("AceDB-3.0"):New("SocialiteDB")
+    self.eventMap = eventMap
+    for i,v in ipairs(eventMap) do
+        self:Debug('Registering event: '..v.event)
+        self:RegisterEvent(v.event, function (...) v.handler(v.event, ...) end)
+        -- self:RegisterEvent(v.event, v.handler)
+    end
+end
