@@ -27,9 +27,11 @@ function SCL:TallyBossKill()
     if not groupPrefix then self:Debug("Not in a group. Skipping tally."); return nil end
     self:Debug("Group prefix is: "..groupPrefix)
     for i=1,numGroupMembers do
-        local playerGUID = UnitGUID(groupPrefix..i)
-        self:Debug("Grabbed player GUID: "..playerGUID)
-        SCL:TallyBossKillCharacter(playerGUID)
+        if UnitIsPlayer(groupPrefix..i) then 
+            local playerGUID = UnitGUID(groupPrefix..i)
+            self:Debug("Grabbed player GUID: "..playerGUID)
+            SCL:TallyBossKillCharacter(playerGUID)
+        end
     end
 end
 
@@ -63,8 +65,9 @@ function SCL:VerifyCharacterByGUID(characterGUID)
 end
 
 function SCL:AddToTooltip(event, ...)
+    if not UnitIsPlayer("mouseover") then return end
     self:Debug(event)
-    local mouseoverGUID = UnitGUID('mouseover')
+    local mouseoverGUID = UnitGUID("mouseover")
     if self.db.global[mouseoverGUID] == nil then return end
     local character = self.db.global[mouseoverGUID]
     GameTooltip:AddLine("|cFFFF0000SCL|r | Kills "..character.stats.bossKills)
