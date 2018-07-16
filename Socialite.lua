@@ -66,11 +66,12 @@ end
 
 function SCL:AddToTooltip(event, ...)
     if not UnitIsPlayer("mouseover") then return end
-    self:Debug(event)
+    -- self:Debug(event)
     local mouseoverGUID = UnitGUID("mouseover")
     if self.db.global[mouseoverGUID] == nil then return end
     local character = self.db.global[mouseoverGUID]
     GameTooltip:AddLine("|cFFFF0000SCL|r | Kills "..character.stats.bossKills)
+    GameTooltip:Show()
 end
 
 --@debug@
