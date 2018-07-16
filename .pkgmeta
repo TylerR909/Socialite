@@ -3,6 +3,7 @@ enable-nolib-creation: no
 ignore:
     - .vscode
     - README.md
+    - Pics
 license-output: LICENSE
 
 externals:
