@@ -90,6 +90,59 @@ function SCL.shouldGenerateTooltipFromConfig(config)
     )
 end
 
+function SCL:StartSession()
+    self:Debug("Starting a session...")
+    self.db.char.session = {
+        timeStarted = GetServerTime(),
+        peopleSeen = {}
+    }
+end
+
+function SCL:EndSession()
+    if not self.db.char.session then return end
+    self:Debug("Ending a session...")
+    local timeEnded = GetServerTime()
+    local timeStarted = self.db.char.session.timeStarted
+    if timeStarted ~= nil then
+        self:Debug(("Session lasted %d minutes"):format(
+            floor((timeEnded - timeStarted) / 60)
+        ))
+    end
+    self.db.char.session = nil
+end
+
+function SCL:UpdateSession()
+    if not self.db.char.session then self:StartSession() end
+    local numGroupMembers = GetNumGroupMembers()
+    local groupPrefix = (IsInRaid() and 'raid') or (IsInGroup() and 'party')
+    if not groupPrefix then self:Debug("Not in a group. Skipping tally."); return nil end
+
+    for i=1,numGroupMembers do
+        if UnitIsPlayer(groupPrefix..i) then 
+            local playerGUID = UnitGUID(groupPrefix..i)
+            if not self.db.char.session.peopleSeen[playerGUID] then
+                -- Add to session, check if we know them
+                self.db.char.session.peopleSeen[playerGUID] = true
+                if self.db.global.data[playerGUID] then
+                    self:NotifyDuringSession(self.db.global.data[playerGUID])
+                end
+            end
+        end
+    end
+end
+
+function SCL:NotifyDuringSession(player)
+    if not self.db.global.config.notifications.onJoin then return end
+    if self.db.global.config.notifications.onJoinSound then
+        PlaySound(SOUNDKIT.TELL_MESSAGE, "Master")
+    end
+    SCL:Print((L["YouHaveSeenTemplate"]):format(
+        player.name,
+        date("%B %d", player.lastSeen),
+        player.stats.bossKills
+    ))
+end
+
 --@do-not-package@
     function SCL:Dump()
         local f = AceGUI:Create("Frame")
@@ -143,13 +196,13 @@ local eventMap = {
         handler = "EchoEvent"
     }, {
         event = "GROUP_JOINED",
-        handler = "EchoEvent"
+        handler = "StartSession"
     }, {
         event = "GROUP_LEFT",
-        handler = "EchoEvent"
+        handler = "EndSession"
     }, {
         event = "GROUP_ROSTER_UPDATE",
-        handler = "EchoEvent"
+        handler = "UpdateSession"
     }, {
         event = "UPDATE_MOUSEOVER_UNIT",
         handler = "GenerateTooltip"

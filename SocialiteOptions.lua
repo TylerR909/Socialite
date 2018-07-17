@@ -19,7 +19,8 @@ local defaultOptions = {
                 lfr = false
             },
             notifications = {
-                onJoin = true
+                onJoin = true,
+                onJoinSound = true
             }
         },
         data = {}
@@ -155,9 +156,21 @@ local optionsTable = {
             name = L["When Someone Joins My Group"],
             type = "toggle",
             order = order(),
-            disabled = true,
             set = function(_, val) SCL.db.global.config.notifications.onJoin = val end,
-            set = function() return SCL.db.global.config.notifications.onJoin end
+            get = function() return SCL.db.global.config.notifications.onJoin end
+        },
+        notificationOnJoinSound = {
+            name = L["Play Sound When Someone Joins My Group"],
+            type = "toggle",
+            order = order(),
+            disabled = function () return not SCL.db.global.config.notifications.onJoin end,
+            set = function(_, val)
+                SCL.db.global.config.notifications.onJoinSound = val
+                if val then
+                    PlaySound(SOUNDKIT.TELL_MESSAGE, "Master")
+                end
+            end,
+            get = function() return SCL.db.global.config.notifications.onJoinSound end
         },
         utilityHeader = {
             name = L["Utility"],
