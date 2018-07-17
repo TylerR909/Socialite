@@ -74,7 +74,7 @@ function SCL:GenerateTooltip(event, ...)
     local character = self.db.global.data[mouseoverGUID]
     local msg = ("|cFFFF0000%s|r -> "):format(L["SCL"])
     if self.db.global.config.tooltip.bossKills then
-        msg = msg + ("%s: %d"):format(L["Kills"], character.stats.bossKills)
+        msg = msg..("%s: %d"):format(L["Kills"], character.stats.bossKills)
     end
 
     GameTooltip:AddLine(msg)
