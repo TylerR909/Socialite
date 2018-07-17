@@ -28,7 +28,7 @@ function SCL:TallyBossKill()
     if not groupPrefix then self:Debug("Not in a group. Skipping tally."); return nil end
     self:Debug("Group prefix is: "..groupPrefix)
     for i=1,numGroupMembers do
-        if UnitIsPlayer(groupPrefix..i) then 
+        if UnitIsPlayer(groupPrefix..i) and UnitIsVisible(groupPrefix..i) then 
             local playerGUID = UnitGUID(groupPrefix..i)
             self:Debug("Grabbed player GUID: "..playerGUID)
             SCL:TallyBossKillCharacter(playerGUID)
