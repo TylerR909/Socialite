@@ -126,7 +126,7 @@ function SCL:UpdateSession()
                 -- Notify if unit has been seen, and isn't guildie or friend
                 if self.db.global.data[playerGUID]
                     and not UnitIsInMyGuild(groupPrefix..i)
-                    and not UnitIsFriend(groupPrefix..i) 
+                    and not UnitIsFriend("player", groupPrefix..i) 
                 then
                     self:NotifyDuringSession(self.db.global.data[playerGUID])
                 end
