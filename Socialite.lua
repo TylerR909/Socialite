@@ -80,8 +80,6 @@ function SCL:AddToTooltip(event, ...)
 end
 
 --@debug@
-    SCL.debugEnabled = true;
-
     function SCL:Dump()
         local f = AceGUI:Create("Frame")
         f:SetCallback("OnClose", function(widget) AceGUI:Release(widget) end)
@@ -148,6 +146,12 @@ local eventMap = {
 function SCL:OnInitialize()
     self:Debug("SCL Initializing")
     self.db = LibStub("AceDB-3.0"):New("SocialiteDB")
+    self.debugEnabled = false
+    --@debug@
+    self.debugEnabled = self.db.global.debugEnabled
+    C_Timer.After(4, function() self:Print("Debug "..tostring(self.debugEnabled)) end)
+    --@end-debug@
+    self:InitOpts()
     self.eventMap = eventMap
     for i,v in ipairs(eventMap) do
         self:Debug('Registering event: '..v.event)

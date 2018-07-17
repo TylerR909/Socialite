@@ -9,3 +9,4 @@ embeds.xml
 Locale\Locales.xml
 
 Socialite.lua
+SocialiteOptions.lua
