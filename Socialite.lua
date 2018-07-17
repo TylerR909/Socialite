@@ -20,6 +20,7 @@ function SCL:EchoEvent(event, ...)
 end
 
 function SCL:TallyBossKill()
+    if not self.db.global.config.tracking.bossKills then return end
     self:Debug("Tallying boss kill...")
     local numGroupMembers = GetNumGroupMembers()
     -- local groupPrefix = (function() if IsInRaid() then return "raid" else return "party" end end)()
@@ -45,9 +46,9 @@ end
 function SCL:VerifyCharacterByGUID(characterGUID)
     local _,classId,_,_,_,characterName,characterRealm = GetPlayerInfoByGUID(characterGUID)
 
-    if not self.db.global[characterGUID] then
+    if not self.db.global.data[characterGUID] then
         self:Debug("Adding "..characterName.." to SCL db")
-        self.db.global[characterGUID] = {
+        self.db.global.data[characterGUID] = {
             GUID = characterGuid,
             name = characterName,
             realm = characterRealm,
@@ -61,32 +62,42 @@ function SCL:VerifyCharacterByGUID(characterGUID)
         }
     end
 
-    return self.db.global[characterGUID]
+    return self.db.global.data[characterGUID]
 end
 
-function SCL:AddToTooltip(event, ...)
+function SCL:GenerateTooltip(event, ...)
     if not UnitIsPlayer("mouseover") then return end
-    -- self:Debug(event)
+    if not self.shouldGenerateTooltipFromConfig(self.db.global.config.tooltip) then return end
     local mouseoverGUID = UnitGUID("mouseover")
-    if self.db.global[mouseoverGUID] == nil then return end
-    local character = self.db.global[mouseoverGUID]
-    -- GameTooltip:AddLine("|cFFFF0000"..L["SCL"].."|r -> "..L["Kills"].." "..character.stats.bossKills)
-    GameTooltip:AddLine(("|cFFFF0000%s|r -> %s: %d"):format(
-        L["SCL"],
-        L["Kills"],
-        character.stats.bossKills
-    ))
+    if self.db.global.data[mouseoverGUID] == nil then return end
+
+    local character = self.db.global.data[mouseoverGUID]
+    local msg = ("|cFFFF0000%s|r -> "):format(L["SCL"])
+    if self.db.global.config.tooltip.bossKills then
+        msg = msg + ("%s: %d"):format(L["Kills"], character.stats.bossKills)
+    end
+
+    GameTooltip:AddLine(msg)
     GameTooltip:Show()
 end
 
---@debug@
+function SCL.shouldGenerateTooltipFromConfig(config)
+    return config.enabled and (
+        config.bossKills or
+        config.lfg or
+        config.bg or
+        config.lfr
+    )
+end
+
+--@do-not-package@
     function SCL:Dump()
         local f = AceGUI:Create("Frame")
         f:SetCallback("OnClose", function(widget) AceGUI:Release(widget) end)
         f:SetTitle("SCL Data Dump")
         local editbox = AceGUI:Create("MultiLineEditBox")
         f:AddChild(editbox)
-        editbox:SetText(table_to_string(self.db.global))
+        editbox:SetText(table_to_string(self.db.global.data))
         editbox:SetFullWidth(true)
         editbox:SetFullHeight(true)
         editbox:SetNumLines(25)
@@ -116,12 +127,14 @@ end
         end
         return result.."\n}\n"
     end
---@end-debug@
+--@end-do-not-package@
 
 local eventMap = {
     {
         event = "BOSS_KILL",
-        handler = "TallyBossKill"
+        handler = "TallyBossKill",
+        dbConfigClass = 'tracking',
+        dbConfigOption = 'bossKills'
     }, {
         event = "CHALLENGE_MODE_COMPLETE",
         handler = "EchoEvent"
@@ -139,24 +152,30 @@ local eventMap = {
         handler = "EchoEvent"
     }, {
         event = "UPDATE_MOUSEOVER_UNIT",
-        handler = "AddToTooltip"
+        handler = "GenerateTooltip"
     }
 }
 
 function SCL:OnInitialize()
     self:Debug("SCL Initializing")
-    self.db = LibStub("AceDB-3.0"):New("SocialiteDB")
-    self.debugEnabled = false
-    --@debug@
-    self.debugEnabled = self.db.global.debugEnabled
-    C_Timer.After(4, function() self:Print("Debug "..tostring(self.debugEnabled)) end)
-    --@end-debug@
     self:InitOpts()
+    self.debugEnabled = false
+    --@do-not-package@
+    self.debugEnabled = self.db.global.config.debugEnabled or false
+    C_Timer.After(4, function() self:Print("Debug "..tostring(self.debugEnabled)) end)
+    --@end-do-not-package@
     self.eventMap = eventMap
     for i,v in ipairs(eventMap) do
-        self:Debug('Registering event: '..v.event)
-        -- self:RegisterEvent(v.event, function (...) v.handler(v.event, ...) end)
-        self:RegisterEvent(v.event, v.handler)
+        if v.dbConfigClass and v.dbConfigOption then
+            if self.db.global.config[v.dbConfigClass][v.dbConfigOption] then
+                self:Debug('Registering event: '..v.event)
+                self:RegisterEvent(v.event, v.handler)
+            else
+                self:Debug(("Skipping %s as it's disabled"):format(v.event))
+            end
+        else
+            self:Debug('Registering event: '..v.event)
+            self:RegisterEvent(v.event, v.handler)
+        end
     end
-    -- self:SecureHook(GameTooltip, "SetUnit", "AddToTooltip")
 end
