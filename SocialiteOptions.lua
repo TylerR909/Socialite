@@ -46,27 +46,6 @@ local optionsTable = {
     handler = SCL,
     type = 'group',
     args = {
-        debug = {
-            name = L["Debug"],
-            desc = "",
-            type = 'toggle',
-            order = order(),
-            hidden = false,
-            set = function(_, val)
-                SCL.debugEnabled = val
-                SCL:Print(L["Debug"].." "..(function ()
-                    if SCL.debugEnabled then
-                        return ("|cFFFF0000%s|r"):format(L["Enabled"])
-                    else
-                        return ("|cFF00FF00%s|r"):format(L["Disabled"])
-                    end
-                end)())
-                --@do-not-package@
-                SCL.db.global.config.debugEnabled = val
-                --@end-do-not-package@
-            end,
-            get = function() return SCL.debugEnabled end
-        },
         trackingHeader = {
             name = L["Track"],
             order = order(),
@@ -148,19 +127,19 @@ local optionsTable = {
             get = function() return SCL.db.global.config.tooltip.bg end
         },
         notificationHeader = {
-            name = L["Notifications"],
+            name = L["Group Join Notifications"],
             order = order(),
             type = "header"
         },
         notificationOnJoin = {
-            name = L["When Someone Joins My Group"],
+            name = L["Enabled"],
             type = "toggle",
             order = order(),
             set = function(_, val) SCL.db.global.config.notifications.onJoin = val end,
             get = function() return SCL.db.global.config.notifications.onJoin end
         },
         notificationOnJoinSound = {
-            name = L["Play Sound When Someone Joins My Group"],
+            name = L["Play Sound"],
             type = "toggle",
             order = order(),
             disabled = function () return not SCL.db.global.config.notifications.onJoin end,
@@ -177,6 +156,10 @@ local optionsTable = {
             type = "header",
             order = order()
         },
+        -- First rendition pruned anyone over a year. It'll be awhile before that's relevant and
+        -- there's no explanation as to what "Prune" does to the user, so disabling for now
+        -- until I can add pruning options and more information about what it does.
+        --@alpha@
         pruneHandler = {
             name = L["Prune"],
             type = "execute",
@@ -196,7 +179,30 @@ local optionsTable = {
                 local endCount = tcount(SCL.db.global.data)
                 SCL:Print(("Prune complete. %d of %d entries deleted."):format(startCount - endCount, startCount))
             end
-        }
+        },
+        --@end-alpha@
+        debug = {
+            name = L["Debug"],
+            desc = "",
+            type = 'toggle',
+            order = order(),
+            hidden = false,
+            confirm = function(_, val) return val and "Are you sure? This is VERY spammy and will self-disable on next reload." end,
+            set = function(_, val)
+                SCL.debugEnabled = val
+                SCL:Print(L["Debug"].." "..(function ()
+                    if SCL.debugEnabled then
+                        return ("|cFFFF0000%s|r"):format(L["Enabled"])
+                    else
+                        return ("|cFF00FF00%s|r"):format(L["Disabled"])
+                    end
+                end)())
+                --@do-not-package@
+                SCL.db.global.config.debugEnabled = val
+                --@end-do-not-package@
+            end,
+            get = function() return SCL.debugEnabled end
+        },
     }
 }
 

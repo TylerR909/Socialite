@@ -19,7 +19,7 @@ function SCL:EchoEvent(event, ...)
     self:Debug(msg)
 end
 
-function SCL:TallyBossKill()
+function SCL:BossKill()
     if not self.db.global.config.tracking.bossKills then return end
     self:Debug("Tallying boss kill...")
     local numGroupMembers = GetNumGroupMembers()
@@ -65,13 +65,24 @@ function SCL:VerifyCharacterByGUID(characterGUID)
     return self.db.global.data[characterGUID]
 end
 
-function SCL:GenerateTooltip(event, ...)
-    if not UnitIsPlayer("mouseover") then return end
-    if not self.shouldGenerateTooltipFromConfig(self.db.global.config.tooltip) then return end
-    local mouseoverGUID = UnitGUID("mouseover")
-    if self.db.global.data[mouseoverGUID] == nil then return end
+function SCL:GenerateTooltipFromMouseover()
+    self:Debug("Generating tooltip from mouseover")
+    self:GenerateTooltip("mouseover")
+end
 
-    local character = self.db.global.data[mouseoverGUID]
+function SCL:GenerateTooltipFromUnit(unit)
+    self:Debug("Generating tooltip from unit "..unit)
+    if unit == "mouseover" then return end
+    self:GenerateTooltip(unit)
+end
+
+function SCL:GenerateTooltip(unit)
+    if not UnitIsPlayer(unit) then return end
+    if not self.shouldGenerateTooltipFromConfig(self.db.global.config.tooltip) then return end
+    local unitGUID = UnitGUID(unit)
+    if self.db.global.data[unitGUID] == nil then return end
+
+    local character = self.db.global.data[unitGUID]
     local msg = ("|cFFFF0000%s|r -> "):format(L["SCL"])
     if self.db.global.config.tooltip.bossKills then
         msg = msg..("%s: %d"):format(L["Kills"], character.stats.bossKills)
@@ -83,10 +94,11 @@ end
 
 function SCL.shouldGenerateTooltipFromConfig(config)
     return config.enabled and (
-        config.bossKills or
-        config.lfg or
-        config.bg or
-        config.lfr
+        config.bossKills 
+        -- Not yet implemented
+        -- or config.lfg
+        -- or config.bg
+        -- or config.lfr
     )
 end
 
@@ -189,15 +201,15 @@ end
 local eventMap = {
     {
         event = "BOSS_KILL",
-        handler = "TallyBossKill",
+        handler = "BossKill",
         dbConfigClass = 'tracking',
         dbConfigOption = 'bossKills'
-    }, {
-        event = "CHALLENGE_MODE_COMPLETE",
-        handler = "EchoEvent"
-    }, {
-        event = "LFG_COMPLETION_AWARD",
-        handler = "EchoEvent"
+    -- }, {
+    --     event = "CHALLENGE_MODE_COMPLETE",
+    --     handler = "EchoEvent"
+    -- }, {
+    --     event = "LFG_COMPLETION_AWARD",
+    --     handler = "EchoEvent"
     }, {
         event = "GROUP_JOINED",
         handler = "StartSession"
@@ -209,7 +221,7 @@ local eventMap = {
         handler = "UpdateSession"
     }, {
         event = "UPDATE_MOUSEOVER_UNIT",
-        handler = "GenerateTooltip"
+        handler = "GenerateTooltipFromMouseover"
     }
 }
 
@@ -235,4 +247,10 @@ function SCL:OnInitialize()
             self:RegisterEvent(v.event, v.handler)
         end
     end
+
+    self:SecureHook(GameTooltip, "SetUnit", function (_, unit)
+        if not UnitIsVisible(unit) then
+            self:GenerateTooltipFromUnit(unit)
+        end  -- else let UPDATE_MOUSEOVER_UNIT handle it
+    end)
 end
