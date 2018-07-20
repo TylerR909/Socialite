@@ -16,7 +16,7 @@ function SCL:EchoEvent(event, ...)
     for i=1, select('#', ...) do
         msg = msg.." "..tostring(select(i, ...))
     end
-    self:Print(msg)
+    self:Debug(msg)
 end
 
 function SCL.GetGroupPrefix()
@@ -29,7 +29,27 @@ function SCL:GetVisibleGroupMemberGUIDs()
     local groupPrefix = self.GetGroupPrefix()
     local groupMates = {}
     for i=1,numGroupMembers do
-        if UnitIsPlayer(groupPrefix..i) and UnitIsVisible(groupPrefix..i) then 
+        if UnitIsPlayer(groupPrefix..i) 
+            and UnitIsVisible(groupPrefix..i) 
+            and not UnitIsUnit(groupPrefix..i, "player")
+        then 
+            local playerGUID = UnitGUID(groupPrefix..i)
+            tinsert(groupMates, playerGUID)
+        end
+    end
+    return groupMates
+end
+
+function SCL:GetBattlegroundGroupMemberGUIDs()
+    self:Debug("Getting instanced group members")
+    local numGroupMembers = GetNumGroupMembers()
+    local groupPrefix = self.GetGroupPrefix()
+    local groupMates = {}
+    for i=1,numGroupMembers do
+        if UnitIsPlayer(groupPrefix..i) 
+            and UnitInBattleground(groupPrefix..i)
+            and not UnitIsUnit(groupPrefix..i, "player")
+        then 
             local playerGUID = UnitGUID(groupPrefix..i)
             tinsert(groupMates, playerGUID)
         end
@@ -41,7 +61,7 @@ function SCL:BossKill()
     if not self.db.global.config.tracking.bossKills then return end
     self:Debug("Tallying boss kill...")
     local groupGUIDs = SCL:GetVisibleGroupMemberGUIDs()
-    for _,personGUID in pairs(groupGUIDs) do
+    for _,personGUID in ipairs(groupGUIDs) do
         SCL:TallyBossKillCharacter(personGUID)
     end
 end
@@ -56,9 +76,9 @@ end
 function SCL:DungeonComplete()
     if not self.db.global.config.tracking.lfg then return end
     self:Debug("Tallying dungeon finish...")
-    local groupGUIDs = SCL:GetVisibleGroupMemberGUIDs()
-    for _,personGUID in paiars(groupGUIDs) do
-        SCL:TallyDungeonCompleteCharacter(personGUID)
+    local groupGUIDs = self:GetVisibleGroupMemberGUIDs()
+    for _,personGUID in ipairs(groupGUIDs) do
+        self:TallyDungeonCompleteCharacter(personGUID)
     end
 end
 
@@ -67,6 +87,53 @@ function SCL:TallyDungeonCompleteCharacter(personGUID)
     char.stats.lfg = (char.stats.lfg or 0) + 1
     char.lastSeen = GetServerTime()
     self:Debug("Dungeons complete with "..char.name..": "..char.stats.lfg)
+end
+
+function SCL:StartBattlegroundComplete()
+    if GetBattlefieldWinner() == nil then -- {horde=0, alli=1, draw=255, in progress=nil}
+        self:Debug("No winner detected yet")
+        return
+    elseif self.lock then
+        -- The relevant event fires again when leaving the 
+        -- BG so it'll count everyone on completion, and it'll
+        -- count whoever's left again when we leave, so we lock
+        -- after the first count until zoning out
+        self:Debug("App locked, skipping")
+        return
+    end
+    self:InitLock()
+    self:Debug("BG or Arena complete. Tallying...")
+    self:BattlegroundComplete()
+end
+
+function SCL:BattlegroundComplete()
+    local handler = nil
+    if select(1, IsActiveBattlefieldArena()) then
+        if not self.db.global.config.tracking.arena then return end
+        self:Debug("Setting handler to Arena Tally")
+        handler = self.TallyArenaCharacter
+    else 
+        if not self.db.global.config.tracking.bg then return end
+        self:Debug("Setting handler to Battleground Tally")
+        handler = self.TallyBattlegroundCharacter
+    end
+    for _,personGUID in ipairs(self:GetBattlegroundGroupMemberGUIDs()) do
+        handler(self, personGUID)
+    end
+end
+
+function SCL:TallyArenaCharacter(personGUID)
+    local char = self:VerifyCharacterByGUID(personGUID)
+    char.stats.arena = (char.stats.arena or 0) + 1
+    char.lastSeen = GetServerTime()
+    self:Debug("Arenas with "..char.name.." now at "..char.stats.arena)
+end
+
+function SCL:TallyBattlegroundCharacter(personGUID)
+    local char = self:VerifyCharacterByGUID(personGUID)
+    char.stats.bg = (char.stats.bg or 0) + 1
+    char.lastSeen = GetServerTime()
+    self:Debug("BGs with "..char.name.." now at "..char.stats.bg)
 end
 
 function SCL:VerifyCharacterByGUID(characterGUID)
@@ -86,7 +153,8 @@ function SCL:VerifyCharacterByGUID(characterGUID)
                 bossKills = 0,
                 lfg = 0,
                 lfr = 0,
-                bg = 0
+                bg = 0,
+                arena = 0
             }
         }
     end
@@ -94,8 +162,18 @@ function SCL:VerifyCharacterByGUID(characterGUID)
     return self.db.global.data[characterGUID]
 end
 
+--- Sets a lock until the next PLAYER_ENTERING_WORLD event fires
+function SCL:InitLock()
+    self:Debug("Locking")
+    self.lock = true
+    self:RegisterEvent("PLAYER_ENTERING_WORLD", function()
+        self:Debug("Unlocking")
+        self.lock = false
+        self:UnregisterEvent("PLAYER_ENTERING_WORLD")
+    end)
+end
+
 function SCL:GenerateTooltipFromMouseover()
-    self:Debug("Generating tooltip from mouseover")
     self:GenerateTooltip("mouseover")
 end
 
@@ -115,12 +193,20 @@ function SCL:GenerateTooltip(unit)
     local stats = self.db.global.data[unitGUID].stats
     local msgHeader = ("|cFFFF0000%s|r -> "):format(L["Socialite"])
     local msg = ""
-    if config.bossKills and stats.bossKills > 0 then
+    if config.bossKills and stats.bossKills or 0 > 0 then
         msg = msg..("%s: %d"):format(L["Bosses"], stats.bossKills)
     end
-    if config.lfg and stats.lfg > 0 then
+    if config.lfg and stats.lfg or 0 > 0 then
         if msg ~= "" then msg = msg..', ' end
         msg = msg..("%s: %d"):format(L["Dungeons"], stats.lfg)
+    end
+    if config.bg and stats.bg or 0 > 0 then
+        if msg ~= "" then msg = msg..', ' end
+        msg = msg..("%s: %d"):format(L["BGs"], stats.bg)
+    end
+    if config.arena and stats.arena or 0 > 0 then
+        if msg ~= "" then msg = msg..', ' end
+        msg = msg..("%s: %d"):format(L["Arena"], stats.arena)
     end
 
     GameTooltip:AddLine(msgHeader..msg)
@@ -131,13 +217,16 @@ function SCL.shouldGenerateTooltipFromConfig(config)
     return config.enabled and (
         config.bossKills 
         or config.lfg
+        or config.bg
+        or config.arena
         -- Not yet implemented
-        -- or config.bg
         -- or config.lfr
     )
 end
 
 function SCL:StartSession()
+    -- The relevant event fires when queueing among other things so don't start yet
+    if not IsInGroup() then return end 
     self:Debug("Starting a session...")
     self.db.char.session = {
         timeStarted = GetServerTime(),
@@ -192,54 +281,16 @@ function SCL:NotifyDuringSession(player)
         PlaySound(SOUNDKIT.TELL_MESSAGE, "Master")
     end
     -- "The last time you saw %s was on %s!
-    --   You have killed %d bosses and finished
-    --   %d dungeons together."
+    --   Bosses: %d, Dungeons: %d, BGs: %d, Arenas: %d"
     self:Print((L["YouHaveSeenTemplate"]):format(
         player.name,
         date("%b %d %Y", player.lastSeen),
-        player.stats.bossKills,
-        player.stats.lfg
+        player.stats.bossKills or 0,
+        player.stats.lfg or 0,
+        player.stats.bg or 0,
+        player.stats.arena or 0
     ))
 end
-
---@do-not-package@
-    function SCL:Dump()
-        local f = AceGUI:Create("Frame")
-        f:SetCallback("OnClose", function(widget) AceGUI:Release(widget) end)
-        f:SetTitle("SCL Data Dump")
-        local editbox = AceGUI:Create("MultiLineEditBox")
-        f:AddChild(editbox)
-        editbox:SetText(table_to_string(self.db.global.data))
-        editbox:SetFullWidth(true)
-        editbox:SetFullHeight(true)
-        editbox:SetNumLines(25)
-    end
-
-    function table_to_string(tbl)
-        local result = "{\n"
-        for k, v in pairs(tbl) do
-            -- Check the key type (ignore any numerical keys - assume its an array)
-            if type(k) == "string" then
-                result = result.."[\""..k.."\"]".."="
-            end
-
-            -- Check the value type
-            if type(v) == "table" then
-                result = result..table_to_string(v)
-            elseif type(v) == "boolean" then
-                result = result..tostring(v)
-            else
-                result = result.."\""..v.."\""
-            end
-            result = result..",\n"
-        end
-        -- Remove leading commas from the result
-        if result ~= "" then
-            result = result:sub(1, result:len()-1)
-        end
-        return result.."\n}\n"
-    end
---@end-do-not-package@
 
 local eventMap = {
     {
@@ -274,6 +325,9 @@ local eventMap = {
     }, {
         event = "SCENARIO_COMPLETED",
         handler = "EchoEvent"
+    }, {
+        event = "UPDATE_BATTLEFIELD_STATUS",
+        handler = "StartBattlegroundComplete"
     }
 }
 

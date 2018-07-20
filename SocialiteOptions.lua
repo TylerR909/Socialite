@@ -9,14 +9,16 @@ local defaultOptions = {
                 bossKills = true,
                 lfg = true,
                 bg = true,
-                lfr = false
+                lfr = false,
+                arena = true
             },
             tooltip = {
                 enabled = true,
                 bossKills = true,
                 lfg = true,
                 bg = true,
-                lfr = false
+                lfr = false,
+                arena = true
             },
             notifications = {
                 onJoin = true,
@@ -59,12 +61,26 @@ local optionsTable = {
             get = function() return SCL.db.global.config.tracking.bossKills end
         }, 
         trackingLFGComplete = {
-            name = L["LFG Complete"],
+            name = L["Dungeons"],
             type = "toggle",
             order = order(),
             set = function(_,val) SCL.db.global.config.tracking.lfg = val end,
             get = function() return SCL.db.global.config.tracking.lfg end
         }, 
+        trackingBGComplete = {
+            name = L["Battlegrounds"],
+            type = "toggle",
+            order = order(),
+            set = function(_, val) SCL.db.global.config.tracking.bg = val end,
+            get = function() return SCL.db.global.config.tracking.bg end
+        },
+        trackingArenaComplete = {
+            name = L["Arena"],
+            type = "toggle",
+            order = order(),
+            set = function(_, val) SCL.db.global.config.tracking.arena = val end,
+            get = function() return SCL.db.global.config.tracking.arena end
+        },
         trackingLFRComplete = {
             name = L["LFR Complete"],
             type = "toggle",
@@ -72,14 +88,6 @@ local optionsTable = {
             disabled = true,
             set = function(_,val) SCL.db.global.config.tracking.lfr = val end,
             get = function() return SCL.db.global.config.tracking.lfr end
-        },
-        trackingBGComplete = {
-            name = L["BG Complete"],
-            type = "toggle",
-            order = order(),
-            disabled = true,
-            set = function(_, val) SCL.db.global.config.tracking.bg = val end,
-            get = function() return SCL.db.global.config.tracking.bg end
         },
         tooltipHeader = {
             name = L["Tooltip"],
@@ -102,12 +110,29 @@ local optionsTable = {
             get = function() return SCL.db.global.config.tooltip.bossKills end
         }, 
         tooltipLFGComplete = {
-            name = L["LFG Complete"],
+            name = L["Dungeons"],
             type = "toggle",
             order = order(),
+            disabled = function() return not SCL.db.global.config.tooltip.enabled end,
             set = function(_,val) SCL.db.global.config.tooltip.lfg = val end,
             get = function() return SCL.db.global.config.tooltip.lfg end
         }, 
+        tooltipBGComplete = {
+            name = L["Battlegrounds"],
+            type = "toggle",
+            order = order(),
+            disabled = function() return not SCL.db.global.config.tooltip.enabled end,
+            set = function(_, val) SCL.db.global.config.tooltip.bg = val end,
+            get = function() return SCL.db.global.config.tooltip.bg end
+        },
+        tooltipArenaComplete = {
+            name = L["Arena"],
+            type = "toggle",
+            order = order(),
+            disabled = function() return not SCL.db.global.config.tooltip.enabled end,
+            set = function(_, val) SCL.db.global.config.tooltip.arena = val end,
+            get = function() return SCL.db.global.config.tooltip.arena end
+        },
         tooltipLFRComplete = {
             name = L["LFR Complete"],
             type = "toggle",
@@ -115,14 +140,6 @@ local optionsTable = {
             disabled = true,
             set = function(_,val) SCL.db.global.config.tooltip.lfr = val end,
             get = function() return SCL.db.global.config.tooltip.lfr end
-        },
-        tooltipBGComplete = {
-            name = L["BG Complete"],
-            type = "toggle",
-            order = order(),
-            disabled = true,
-            set = function(_, val) SCL.db.global.config.tooltip.bg = val end,
-            get = function() return SCL.db.global.config.tooltip.bg end
         },
         notificationHeader = {
             name = L["Group Join Notifications"],

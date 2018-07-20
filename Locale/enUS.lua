@@ -15,10 +15,13 @@ L["LFR Complete"] = true
 L["LFG Complete"] = true
 L["Dungeons"] = true
 L["BG Complete"] = true
+L["BGs"] = true
+L["Battlegrounds"] = true
+L["Arena"] = true
 L["Group Join Notifications"] = true
 L["Play Sound"] = true
 L["Utility"] = true
 L["Prune"] = true
 L["Are you sure? This will delete data and may hang your client."] = true
 L["YouHaveSeenTemplate"] =
-    "The last time you saw %s was on %s! You have killed %d bosses and finished %d dungeons together."
+    "The last time you saw %s was on %s! Bosses: %d, Dungeons: %d, BGs: %d, Arenas: %d"
