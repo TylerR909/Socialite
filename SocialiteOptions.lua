@@ -58,6 +58,13 @@ local optionsTable = {
             set = function(_, val) SCL.db.global.config.tracking.bossKills = val end,
             get = function() return SCL.db.global.config.tracking.bossKills end
         }, 
+        trackingLFGComplete = {
+            name = L["LFG Complete"],
+            type = "toggle",
+            order = order(),
+            set = function(_,val) SCL.db.global.config.tracking.lfg = val end,
+            get = function() return SCL.db.global.config.tracking.lfg end
+        }, 
         trackingLFRComplete = {
             name = L["LFR Complete"],
             type = "toggle",
@@ -66,14 +73,6 @@ local optionsTable = {
             set = function(_,val) SCL.db.global.config.tracking.lfr = val end,
             get = function() return SCL.db.global.config.tracking.lfr end
         },
-        trackingLFGComplete = {
-            name = L["LFG Complete"],
-            type = "toggle",
-            order = order(),
-            disabled = true,
-            set = function(_,val) SCL.db.global.config.tracking.lfg = val end,
-            get = function() return SCL.db.global.config.tracking.lfg end
-        }, 
         trackingBGComplete = {
             name = L["BG Complete"],
             type = "toggle",
@@ -102,6 +101,13 @@ local optionsTable = {
             set = function(_, val) SCL.db.global.config.tooltip.bossKills = val end,
             get = function() return SCL.db.global.config.tooltip.bossKills end
         }, 
+        tooltipLFGComplete = {
+            name = L["LFG Complete"],
+            type = "toggle",
+            order = order(),
+            set = function(_,val) SCL.db.global.config.tooltip.lfg = val end,
+            get = function() return SCL.db.global.config.tooltip.lfg end
+        }, 
         tooltipLFRComplete = {
             name = L["LFR Complete"],
             type = "toggle",
@@ -110,14 +116,6 @@ local optionsTable = {
             set = function(_,val) SCL.db.global.config.tooltip.lfr = val end,
             get = function() return SCL.db.global.config.tooltip.lfr end
         },
-        tooltipLFGComplete = {
-            name = L["LFG Complete"],
-            type = "toggle",
-            order = order(),
-            disabled = true,
-            set = function(_,val) SCL.db.global.config.tooltip.lfg = val end,
-            get = function() return SCL.db.global.config.tooltip.lfg end
-        }, 
         tooltipBGComplete = {
             name = L["BG Complete"],
             type = "toggle",

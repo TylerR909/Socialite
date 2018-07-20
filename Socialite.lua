@@ -16,31 +16,57 @@ function SCL:EchoEvent(event, ...)
     for i=1, select('#', ...) do
         msg = msg.." "..tostring(select(i, ...))
     end
-    self:Debug(msg)
+    self:Print(msg)
+end
+
+function SCL.GetGroupPrefix()
+    return (IsInRaid() and 'raid') or (IsInGroup() and 'party')
+end
+
+function SCL:GetVisibleGroupMemberGUIDs()
+    self:Debug("Getting group members...")
+    local numGroupMembers = GetNumGroupMembers()
+    local groupPrefix = self.GetGroupPrefix()
+    local groupMates = {}
+    for i=1,numGroupMembers do
+        if UnitIsPlayer(groupPrefix..i) and UnitIsVisible(groupPrefix..i) then 
+            local playerGUID = UnitGUID(groupPrefix..i)
+            tinsert(groupMates, playerGUID)
+        end
+    end
+    return groupMates
 end
 
 function SCL:BossKill()
     if not self.db.global.config.tracking.bossKills then return end
     self:Debug("Tallying boss kill...")
-    local numGroupMembers = GetNumGroupMembers()
-    -- local groupPrefix = (function() if IsInRaid() then return "raid" else return "party" end end)()
-    local groupPrefix = (IsInRaid() and 'raid') or (IsInGroup() and 'party')
-    if not groupPrefix then self:Debug("Not in a group. Skipping tally."); return nil end
-    self:Debug("Group prefix is: "..groupPrefix)
-    for i=1,numGroupMembers do
-        if UnitIsPlayer(groupPrefix..i) and UnitIsVisible(groupPrefix..i) then 
-            local playerGUID = UnitGUID(groupPrefix..i)
-            self:Debug("Grabbed player GUID: "..playerGUID)
-            SCL:TallyBossKillCharacter(playerGUID)
-        end
+    local groupGUIDs = SCL:GetVisibleGroupMemberGUIDs()
+    for _,personGUID in pairs(groupGUIDs) do
+        SCL:TallyBossKillCharacter(personGUID)
     end
 end
 
 function SCL:TallyBossKillCharacter(characterGUID)
     local char = self:VerifyCharacterByGUID(characterGUID)
-    char.stats.bossKills = char.stats.bossKills + 1
+    char.stats.bossKills = (char.stats.bossKills or 0) + 1
     char.lastSeen = GetServerTime()
     self:Debug("Boss kills with "..char.name..": "..char.stats.bossKills)
+end
+
+function SCL:DungeonComplete()
+    if not self.db.global.config.tracking.lfg then return end
+    self:Debug("Tallying dungeon finish...")
+    local groupGUIDs = SCL:GetVisibleGroupMemberGUIDs()
+    for _,personGUID in paiars(groupGUIDs) do
+        SCL:TallyDungeonCompleteCharacter(personGUID)
+    end
+end
+
+function SCL:TallyDungeonCompleteCharacter(personGUID)
+    local char = self:VerifyCharacterByGUID(personGUID)
+    char.stats.lfg = (char.stats.lfg or 0) + 1
+    char.lastSeen = GetServerTime()
+    self:Debug("Dungeons complete with "..char.name..": "..char.stats.lfg)
 end
 
 function SCL:VerifyCharacterByGUID(characterGUID)
@@ -57,7 +83,10 @@ function SCL:VerifyCharacterByGUID(characterGUID)
             firstSeen = GetServerTime(),
             lastSeen = 0,
             stats = {
-                bossKills = 0
+                bossKills = 0,
+                lfg = 0,
+                lfr = 0,
+                bg = 0
             }
         }
     end
@@ -82,21 +111,27 @@ function SCL:GenerateTooltip(unit)
     local unitGUID = UnitGUID(unit)
     if self.db.global.data[unitGUID] == nil then return end
 
-    local character = self.db.global.data[unitGUID]
-    local msg = ("|cFFFF0000%s|r -> "):format(L["SCL"])
-    if self.db.global.config.tooltip.bossKills then
-        msg = msg..("%s: %d"):format(L["Kills"], character.stats.bossKills)
+    local config = self.db.global.config.tooltip
+    local stats = self.db.global.data[unitGUID].stats
+    local msgHeader = ("|cFFFF0000%s|r -> "):format(L["Socialite"])
+    local msg = ""
+    if config.bossKills and stats.bossKills > 0 then
+        msg = msg..("%s: %d"):format(L["Bosses"], stats.bossKills)
+    end
+    if config.lfg and stats.lfg > 0 then
+        if msg ~= "" then msg = msg..', ' end
+        msg = msg..("%s: %d"):format(L["Dungeons"], stats.lfg)
     end
 
-    GameTooltip:AddLine(msg)
+    GameTooltip:AddLine(msgHeader..msg)
     GameTooltip:Show()
 end
 
 function SCL.shouldGenerateTooltipFromConfig(config)
     return config.enabled and (
         config.bossKills 
+        or config.lfg
         -- Not yet implemented
-        -- or config.lfg
         -- or config.bg
         -- or config.lfr
     )
@@ -133,13 +168,16 @@ function SCL:UpdateSession()
         if UnitIsPlayer(groupPrefix..i) then 
             local playerGUID = UnitGUID(groupPrefix..i)
             if not self.db.char.session.peopleSeen[playerGUID] then
+                self:Debug(playerGUID.." hasn't been seen")
                 -- Add to session, check if we know them
                 self.db.char.session.peopleSeen[playerGUID] = true
                 -- Notify if unit has been seen, and isn't guildie or friend
                 if self.db.global.data[playerGUID]
                     and not UnitIsInMyGuild(groupPrefix..i)
-                    and not UnitIsFriend("player", groupPrefix..i) 
+                    -- Should be called UnitIsFriendly...
+                    -- and not UnitIsFriend("player", groupPrefix..i) 
                 then
+                    self:Debug("Notifying...")
                     self:NotifyDuringSession(self.db.global.data[playerGUID])
                 end
             end
@@ -148,14 +186,19 @@ function SCL:UpdateSession()
 end
 
 function SCL:NotifyDuringSession(player)
+    self:Debug("Notifying")
     if not self.db.global.config.notifications.onJoin then return end
     if self.db.global.config.notifications.onJoinSound then
         PlaySound(SOUNDKIT.TELL_MESSAGE, "Master")
     end
-    SCL:Print((L["YouHaveSeenTemplate"]):format(
+    -- "The last time you saw %s was on %s!
+    --   You have killed %d bosses and finished
+    --   %d dungeons together."
+    self:Print((L["YouHaveSeenTemplate"]):format(
         player.name,
-        date("%B %d", player.lastSeen),
-        player.stats.bossKills
+        date("%b %d %Y", player.lastSeen),
+        player.stats.bossKills,
+        player.stats.lfg
     ))
 end
 
@@ -214,6 +257,9 @@ local eventMap = {
         event = "GROUP_JOINED",
         handler = "StartSession"
     }, {
+        event = "GROUP_JOINED",
+        handler = "UpdateSession"
+    }, {
         event = "GROUP_LEFT",
         handler = "EndSession"
     }, {
@@ -222,6 +268,12 @@ local eventMap = {
     }, {
         event = "UPDATE_MOUSEOVER_UNIT",
         handler = "GenerateTooltipFromMouseover"
+    }, {
+        event = "SCENARIO_COMPLETED",
+        handler = "DungeonComplete"
+    }, {
+        event = "SCENARIO_COMPLETED",
+        handler = "EchoEvent"
     }
 }
 
