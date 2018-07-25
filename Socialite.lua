@@ -57,13 +57,23 @@ function SCL:GetBattlegroundGroupMemberGUIDs()
     return groupMates
 end
 
+function SCL:EncounterEnd(event, ...)
+    local success = select(5, ...)
+    self:Debug("Encounter End")
+    self:Debug(success)
+    if success ~= 1 or not IsInInstance() then return end
+    SCL:BossKill()
+end
+
 function SCL:BossKill()
     if not self.db.global.config.tracking.bossKills then return end
+    if self.timeLock then return end
     self:Debug("Tallying boss kill...")
     local groupGUIDs = SCL:GetVisibleGroupMemberGUIDs()
     for _,personGUID in ipairs(groupGUIDs) do
         SCL:TallyBossKillCharacter(personGUID)
     end
+    self:InitTimeLock()
 end
 
 function SCL:TallyBossKillCharacter(characterGUID)
@@ -74,6 +84,7 @@ function SCL:TallyBossKillCharacter(characterGUID)
 end
 
 function SCL:DungeonComplete()
+    if not IsInInstance() then return end
     if not self.db.global.config.tracking.lfg then return end
     self:Debug("Tallying dungeon finish...")
     local groupGUIDs = self:GetVisibleGroupMemberGUIDs()
@@ -170,6 +181,15 @@ function SCL:InitLock()
         self:Debug("Unlocking")
         self.lock = false
         self:UnregisterEvent("PLAYER_ENTERING_WORLD")
+    end)
+end
+
+function SCL:InitTimeLock()
+    self:Debug("Time Locking")
+    self.timeLock = true 
+    C_Timer.After(1, function() 
+        SCL:Debug("Unlocking Time Lock")
+        SCL.timeLock = false
     end)
 end
 
@@ -298,6 +318,9 @@ local eventMap = {
         handler = "BossKill",
         dbConfigClass = 'tracking',
         dbConfigOption = 'bossKills'
+    }, {
+        event = "ENCOUNTER_END",
+        handler = "EncounterEnd"
     -- }, {
     --     event = "CHALLENGE_MODE_COMPLETE",
     --     handler = "EchoEvent"
@@ -322,9 +345,6 @@ local eventMap = {
     }, {
         event = "SCENARIO_COMPLETED",
         handler = "DungeonComplete"
-    }, {
-        event = "SCENARIO_COMPLETED",
-        handler = "EchoEvent"
     }, {
         event = "UPDATE_BATTLEFIELD_STATUS",
         handler = "StartBattlegroundComplete"
